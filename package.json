@@ -1,0 +1,49 @@
+{
+  "name": "agentos",
+  "version": "0.1.0",
+  "description": "The open-source operating system for AI agents. Persistent memory, skills, tools, permissions, and multi-agent collaboration.",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev --workspace=apps/cli",
+    "cli": "npm run start --workspace=apps/cli",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "memory",
+    "llm",
+    "claude",
+    "codex",
+    "agentos",
+    "multi-agent",
+    "tools",
+    "skills"
+  ],
+  "author": "Michael",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mikecode2005/agentos.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Mikecode2005/agentos/issues"
+  },
+  "homepage": "https://github.com/Mikecode2005/agentos#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2"
+  }
+}
