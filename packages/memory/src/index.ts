@@ -2,7 +2,7 @@
  * @agentos/memory — Persistent memory for AI agents
  *
  * - JSONL store under .agentos/
- * - TF-IDF ranked retrieval
+ * - Hybrid TF-IDF + local embedding retrieval
  * - Git commit ingestion → institutional memory
  * - Extractive "why did we …?" summaries
  */
@@ -23,5 +23,7 @@ export {
   summarizeDecision,
   formatDecisionSummary,
 } from "./summarize.js";
+
+export { embed, cosineSimilarity, hybridScore } from "./embeddings.js";
 
 export { MemoryStore as default } from "./store.js";
