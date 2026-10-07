@@ -1,7 +1,7 @@
 {
   "name": "@agentos/runtime",
-  "version": "0.3.0",
-  "description": "Micro-workers, task runtime, and multi-agent orchestration for AgentOS",
+  "version": "0.5.0",
+  "description": "Micro-workers, LLM plans, and real multi-agent step execution",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,7 +19,10 @@
     "@agentos/core": "*",
     "@agentos/memory": "*",
     "@agentos/skills": "*",
-    "@agentos/agents": "*"
+    "@agentos/agents": "*",
+    "@agentos/providers": "*",
+    "@agentos/permissions": "*",
+    "@agentos/tools": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

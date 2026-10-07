@@ -1,7 +1,3 @@
-/**
- * @agentos/runtime — Micro-workers & multi-agent orchestration
- */
-
 export {
   WorkerPool,
   registerBuiltinHandlers,
@@ -19,3 +15,6 @@ export type { TeamRunResult } from "./teams.js";
 
 export { llmPlan, stubPlan } from "./llm-plan.js";
 export type { AgentPlan, PlanStep } from "./llm-plan.js";
+
+export { executeStep, executePlan, roleTools } from "./execute.js";
+export type { StepExecution } from "./execute.js";
