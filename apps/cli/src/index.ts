@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * AgentOS CLI v0.4
+ * AgentOS CLI v0.5
  */
 
 import { resolve } from "node:path";
@@ -13,12 +13,12 @@ import {
   formatDecisionSummary,
 } from "@agentos/memory";
 import {
+  runMemoryMcp,
   connectPlatform,
   disconnectPlatform,
   listPlatforms,
   listConnectedAdapters,
   refreshContext,
-  buildContextBlock,
 } from "@agentos/agents";
 import { runSkillCommand } from "./skill-cmd.js";
 import { runTeamCommand } from "./team-cmd.js";
@@ -42,11 +42,11 @@ function printHelp(topic?: string) {
     return;
   }
   if (topic === "skill") {
-    console.log(`\nagentos skill list|install|show\n`);
+    console.log(`\nagentos skill list|install|show|apply\n`);
     return;
   }
   if (topic === "team") {
-    console.log(`\nagentos team create|list|run\nLLM: OPENAI_API_KEY or AGENTOS_LLM_*\n`);
+    console.log(`\nagentos team create|list|run\nReal tools under permissions. LLM plan if API key set.\n`);
     return;
   }
   if (topic === "permissions") {
@@ -61,16 +61,13 @@ Usage:
   agentos <command> --help
 
 Setup:
-  init                         Initialize AgentOS
-  connect <platform>           claude-code | codex | cline | opencode | generic
-  disconnect <platform>
-  context [query]
+  init | connect <platform> | disconnect | context [query]
 
 Memory:
   memory add|search|why|ingest|inspect|list
 
 Skills:
-  skill list|install|show
+  skill list|install|show|apply
 
 Teams:
   team create|list|run
@@ -79,6 +76,7 @@ Permissions & tools:
   permissions init|show
   terminal <command> [--role <role>]
   dashboard [--port 3847]
+  mcp                          Memory tools over stdio (for agents)
 
 Other:
   doctor | version | help
@@ -86,10 +84,9 @@ Other:
 Examples:
   agentos init
   agentos memory ingest git --limit 50
-  agentos connect claude-code
-  agentos skill install github
   agentos team run software-team "improve auth"
   agentos terminal "ls src" --role coder
+  agentos mcp
   agentos dashboard
 
 Docs: https://github.com/Mikecode2005/agentos
@@ -138,7 +135,7 @@ async function main() {
     console.log(`  Version: ${config.version}\n`);
     console.log("  Next: agentos memory ingest git --limit 50");
     console.log("        agentos connect claude-code");
-    console.log("        agentos dashboard\n");
+    console.log("        agentos team create software-team\n");
     return;
   }
 
@@ -218,7 +215,7 @@ async function main() {
       if (args[i] === "--role") { i++; continue; }
       cmdParts.push(args[i]);
     }
-    let shellCmd = cmdParts.join(" ").trim();
+    const shellCmd = cmdParts.join(" ").trim();
     if (!shellCmd) {
       console.error('Usage: agentos terminal "command" [--role coder]');
       process.exit(1);
@@ -253,6 +250,11 @@ async function main() {
         process.exit(1);
       }
     }
+    return;
+  }
+
+  if (command === "mcp") {
+    await runMemoryMcp(cwd);
     return;
   }
 
