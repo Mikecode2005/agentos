@@ -1,6 +1,6 @@
 {
   "name": "@agentos/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Core types and utilities for AgentOS",
   "type": "module",
   "main": "./dist/index.js",
@@ -11,13 +11,8 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.2"
-  },
+  "scripts": { "build": "tsc", "dev": "tsc --watch" },
+  "devDependencies": { "typescript": "^5.7.2" },
   "files": ["dist"],
   "license": "Apache-2.0"
 }

@@ -1,11 +1,9 @@
 {
   "name": "@agentos/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AgentOS CLI — npx agentos",
   "type": "module",
-  "bin": {
-    "agentos": "./dist/index.js"
-  },
+  "bin": { "agentos": "./dist/index.js" },
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -15,7 +13,9 @@
   "dependencies": {
     "@agentos/core": "*",
     "@agentos/memory": "*",
-    "@agentos/agents": "*"
+    "@agentos/agents": "*",
+    "@agentos/skills": "*",
+    "@agentos/runtime": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

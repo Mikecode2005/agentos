@@ -1,7 +1,7 @@
 {
   "name": "@agentos/memory",
-  "version": "0.2.0",
-  "description": "Persistent memory for AI agents — git ingest, TF-IDF retrieval, decision summaries",
+  "version": "0.3.0",
+  "description": "Persistent memory — git ingest, hybrid TF-IDF+embedding search, decision summaries",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,12 +16,8 @@
     "dev": "tsc --watch",
     "test": "node --import tsx --test src/**/*.test.ts"
   },
-  "dependencies": {
-    "@agentos/core": "*"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.2"
-  },
+  "dependencies": { "@agentos/core": "*" },
+  "devDependencies": { "typescript": "^5.7.2" },
   "files": ["dist"],
   "license": "Apache-2.0"
 }
