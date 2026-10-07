@@ -1,6 +1,6 @@
 {
   "name": "@agentos/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AgentOS CLI — npx agentos",
   "type": "module",
   "bin": {

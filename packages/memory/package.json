@@ -1,7 +1,7 @@
 {
   "name": "@agentos/memory",
-  "version": "0.1.0",
-  "description": "Persistent memory for AI agents — episodic, semantic, project, preferences, and decision history",
+  "version": "0.1.1",
+  "description": "Persistent memory for AI agents — git ingest, TF-IDF retrieval, decision summaries",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
