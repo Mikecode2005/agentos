@@ -1,0 +1,19 @@
+{
+  "name": "@agentos/dashboard",
+  "version": "0.4.0",
+  "description": "Localhost dashboard for AgentOS",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": { "agentos-dashboard": "./dist/index.js" },
+  "scripts": { "build": "tsc", "dev": "tsx src/index.ts", "start": "node dist/index.js" },
+  "dependencies": {
+    "@agentos/core": "*",
+    "@agentos/memory": "*",
+    "@agentos/skills": "*",
+    "@agentos/runtime": "*",
+    "@agentos/agents": "*"
+  },
+  "devDependencies": { "typescript": "^5.7.2", "tsx": "^4.19.2" },
+  "files": ["dist"],
+  "license": "Apache-2.0"
+}

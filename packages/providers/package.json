@@ -1,0 +1,14 @@
+{
+  "name": "@agentos/providers",
+  "version": "0.4.0",
+  "description": "LLM provider adapters for AgentOS",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "scripts": { "build": "tsc", "dev": "tsc --watch" },
+  "dependencies": { "@agentos/core": "*" },
+  "devDependencies": { "typescript": "^5.7.2" },
+  "files": ["dist"],
+  "license": "Apache-2.0"
+}
