@@ -16,3 +16,6 @@ export {
   SOFTWARE_TEAM_ROLES,
 } from "./teams.js";
 export type { TeamRunResult } from "./teams.js";
+
+export { llmPlan, stubPlan } from "./llm-plan.js";
+export type { AgentPlan, PlanStep } from "./llm-plan.js";

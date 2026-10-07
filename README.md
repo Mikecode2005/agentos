@@ -14,197 +14,104 @@ Your agents shouldn't forget what they learned yesterday.
 
 ## The Problem
 
-Today's AI coding agents are amnesiacs.
-
-They solve a hard problem, ship a PR, then forget *why* the decision was made.
-
-Next week you ask:
-
-> "Why did we use Redis here?"
-
-…and the agent starts guessing from the codebase again.
+Today's AI coding agents are amnesiacs. They solve a hard problem, ship a PR, then forget *why* the decision was made.
 
 ## The Solution
 
-**AgentOS** is the infrastructure layer underneath agents.
+**AgentOS** is the infrastructure layer underneath agents — memory, skills, permissions, sandboxed tools, and multi-agent teams.
 
-```
-Claude Code / Codex / Cline / OpenCode / Gemini CLI / Cursor / Custom Agents
-                              │
-                              ▼
-┌─────────────────────────────────────────────┐
-│                 AgentOS                     │
-│                                             │
-│  Memory  ·  Skills  ·  Tool Registry        │
-│  Agent Identity  ·  Permissions             │
-│  Task Runtime  ·  Agent Communication       │
-│  Context Compression  ·  Observability      │
-│  Evaluation  ·  Long-term Knowledge         │
-└─────────────────────────────────────────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
-      GitHub               Slack               Notion
-      Discord              Linear              Jira
-      PostgreSQL           filesystem          MCP tools
-```
-
-Not another agent.  
-**The operating system for agents.**
+Not another agent. **The operating system for agents.**
 
 ---
 
-## Killer Feature: Institutional Memory
+## Quick Start (V0.4)
 
 ```bash
-agentos memory ingest git --limit 100
-agentos memory why "why did we choose redis?"
-```
-
-```
-📌 Redis was introduced for session caching after auth endpoints
-   showed repeated DB reads under load
-
-Reason:
-The API was experiencing repeated database reads during
-authentication and session validation.
-
-Decisions & evidence:
-• Redis for session caching — high read volume on auth
-  └ Michael · 2025-03-18 · commit 82a91f
-• JWT rotation every 15 minutes — compliance review
-  └ PR #184
-
-Confidence: 91%
-Sources: commit:82a91f, PR #184, src/auth/session.ts
-```
-
-This is not "AI remembers your conversations."  
-This is **institutional memory for software development** — backed by commits, PRs, and decisions.
-
----
-
-## Quick Start (V0.3)
-
-```bash
-# Initialize AgentOS in your project
 npx agentos init
 
-# Turn git history into institutional memory
+# Institutional memory from git
 agentos memory ingest git --limit 50
-
-# Ask why (structured answer with evidence)
 agentos memory why "why redis"
 
-# Or store a decision manually
-agentos memory add "We chose PostgreSQL over MongoDB because of strong consistency requirements."
-
-# Hybrid search (TF-IDF + local embeddings)
-agentos memory search "postgres"
-
-# Wire your coding agent
+# Wire coding agents
 agentos connect claude-code
 agentos connect codex
 
-# Install skills
+# Skills
 agentos skill install github
-agentos skill install debugging
 agentos skill list
 
-# Multi-agent team
+# Permissions + sandboxed terminal
+agentos permissions show
+agentos terminal "ls src" --role coder
+
+# Multi-agent team (LLM plan if API key set)
 agentos team create software-team
 agentos team run software-team "improve auth session caching"
 
-# Health check
-agentos memory inspect
+# Localhost dashboard
+agentos dashboard
+# → http://127.0.0.1:3847
+
+agentos --help
 agentos doctor
 ```
 
 ---
 
-## Features (V0.3)
+## Features
 
 ### Memory
-
 | Command | Description |
 |---------|-------------|
-| `memory add <text>` | Store a decision or fact |
-| `memory search <query>` | Hybrid ranked search (TF-IDF + local embeddings) |
-| `memory why <query>` | Institutional “why did we…?” answer with evidence |
-| `memory ingest git` | Turn git history into memories (`--limit`, `--since`) |
-| `memory inspect` | Screenshot-friendly stats |
-| `memory list` | List all memories |
+| `memory add` | Store a decision or fact |
+| `memory search` | Hybrid TF-IDF + local embeddings |
+| `memory why` | Institutional answer with evidence |
+| `memory ingest git` | Commit history → memories |
+| `memory inspect` | Stats |
 
-- Append-only JSONL store under `.agentos/`
-- Evidence links: commit SHA, files, author, date
-- Offline local embeddings (feature hashing, no model download)
-- Extractive decision summaries
+Offline feature-hash embeddings by default. Optional:
+
+```bash
+npm install @xenova/transformers
+export AGENTOS_EMBEDDINGS=transformers
+```
 
 ### Agent adapters
-
-```bash
-agentos connect claude-code   # → CLAUDE.md
-agentos connect codex         # → AGENTS.md + .codex/instructions.md
-agentos connect cline         # → .clinerules + AGENTS.md
-agentos connect opencode      # → AGENTS.md + OPENCODE.md
-agentos connect generic       # → AGENTS.md
-agentos disconnect <platform>
-agentos context [query]       # refresh .agentos/context.md
-```
-
-Agents load instruction files they already understand. No special SDK required.
+`connect claude-code | codex | cline | opencode | generic`
 
 ### Skills
+Builtin: `github`, `postgres`, `debugging`, `research`, `deployment`
 
+### Permissions & sandbox
+`.agentos/permissions.json` — per-role capabilities, path allow/deny, blocked shell patterns.
+
+### Terminal
 ```bash
-agentos skill list
-agentos skill install github
-agentos skill show debugging
+agentos terminal "npm test" --role tester
 ```
 
-**Builtin skills:** `github`, `postgres`, `debugging`, `research`, `deployment`
+### Teams (LLM-backed)
+Set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `AGENTOS_LLM_*`. Without a key → deterministic stub.
 
-Each skill is a `SKILL.md` playbook (frontmatter + instructions) that agents can load for specialized work.
-
-### Teams & micro-workers
-
+### Dashboard
 ```bash
-agentos team create software-team
-agentos team list
-agentos team run software-team "your goal"
+agentos dashboard [--port 3847]
 ```
-
-Default roles: **planner → researcher → coder → reviewer → tester → deployer**
-
-In-process worker pool handles tasks like `memory.search`, `memory.why`, `agent.plan`.
 
 ---
 
 ## Architecture
 
 ```
-agentos/
-├── apps/
-│   └── cli/              # npx agentos
-├── packages/
-│   ├── core/             # Shared types
-│   ├── memory/           # Store, search, git ingest, embeddings
-│   ├── agents/           # Adapters & context injection
-│   ├── skills/           # Skill registry + builtins
-│   ├── runtime/          # Workers & multi-agent teams
-│   ├── tools/            # (coming)
-│   ├── permissions/      # (coming)
-│   └── evaluation/       # (coming)
-├── adapters/             # Platform docs
-├── integrations/         # GitHub, Slack, … (planned)
-├── examples/
-└── docs/
+packages/
+  core/ memory/ agents/ skills/ runtime/
+  permissions/ tools/ providers/
+apps/
+  cli/ dashboard/
 ```
 
-### Docs
-
-- [Memory architecture](docs/memory.md) — storage, retrieval, git ingest, summaries
-- [Skills & runtime](docs/skills-runtime.md) — skills, embeddings, workers, teams
+Docs: [memory](docs/memory.md) · [skills/runtime](docs/skills-runtime.md) · [V0.4](docs/v0.4.md)
 
 ---
 
@@ -212,13 +119,12 @@ agentos/
 
 | Version | Focus |
 |---------|-------|
-| **V0.1** | Persistent memory (JSONL store) |
-| **V0.1.1** | Git ingest · TF-IDF retrieval · `memory why` |
-| **V0.2** | ✅ Agent adapters (Claude Code, Codex, Cline, OpenCode, generic) |
-| **V0.3** | ✅ Skills · local embeddings · micro-workers · agent teams |
-| **V0.4** | Permissions & sandbox |
-| **V0.5** | Multi-agent runtime (LLM-backed steps) |
-| **V1.0** | Full AgentOS: memory + multi-agent + universal adapters |
+| V0.1–0.1.1 | Memory · git ingest · `memory why` |
+| V0.2 | ✅ Agent adapters |
+| V0.3 | ✅ Skills · embeddings · workers · teams |
+| **V0.4** | ✅ Permissions · sandbox terminal · LLM plans · dashboard · `--help` |
+| V0.5 | Richer multi-agent execution · evaluation |
+| V1.0 | Full AgentOS |
 
 ---
 
@@ -226,42 +132,10 @@ agentos/
 
 > "Docker for AI agents."
 
-| Docker | AgentOS |
-|--------|---------|
-| standard runtime | standard runtime |
-| containers | agents |
-| networking | agent communication |
-| storage | memory |
-| permissions | permissions & sandbox |
-| deployment | evaluation & observability |
+We don't compete with Claude Code or Codex — we make **all of them** better.
 
-We don't compete with Claude Code or Codex.  
-We make **all of them** dramatically better.
-
----
-
-## Model Agnostic
-
-Works with:
-
-- OpenAI · Anthropic · Google · DeepSeek · Qwen · Mistral  
-- OpenRouter · Local models · Custom models  
-
----
-
-## Contributing
-
-This is early. The first 1,000 stars will come from making **universal persistent memory** for existing agents unbelievably good.
-
-PRs, issues, and ideas welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
+**Model agnostic:** OpenAI · Anthropic · Google · local · OpenRouter · custom.
 
 ## License
 
 Apache-2.0
-
----
-
-Built for the age of agents.  
-Your agents deserve an operating system.

@@ -144,7 +144,7 @@ export interface AgentTeam {
   createdAt: string;
 }
 
-export const AGENTOS_VERSION = "0.3.0";
+export const AGENTOS_VERSION = "0.4.0";
 export const AGENTOS_DIR = ".agentos";
 export const MEMORY_FILE = "memory.jsonl";
 export const INDEX_FILE = "index.json";
