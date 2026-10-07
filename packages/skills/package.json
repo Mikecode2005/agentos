@@ -1,0 +1,26 @@
+{
+  "name": "@agentos/skills",
+  "version": "0.3.0",
+  "description": "Skill registry and runtime for AgentOS agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@agentos/core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "files": ["dist", "builtin"],
+  "license": "Apache-2.0"
+}
