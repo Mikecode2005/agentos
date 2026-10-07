@@ -22,6 +22,7 @@ import type {
 } from "@agentos/core";
 import { AGENTOS_DIR, MEMORY_FILE, AGENTOS_VERSION } from "@agentos/core";
 import { rankMemories } from "./search.js";
+import { embed } from "./embeddings.js";
 import { summarizeDecision } from "./summarize.js";
 
 export interface AddMemoryOptions {
@@ -32,7 +33,6 @@ export interface AddMemoryOptions {
   tags?: string[];
   metadata?: Record<string, unknown>;
   evidence?: MemoryEvidence;
-  /** Override createdAt (e.g. original commit date) */
   createdAt?: string;
 }
 
@@ -49,9 +49,7 @@ export class MemoryStore {
 
   async init(): Promise<void> {
     const dir = dirname(this.memoryPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     this.load();
   }
 
@@ -81,6 +79,13 @@ export class MemoryStore {
     appendFileSync(this.memoryPath, JSON.stringify(entry) + "\n", "utf-8");
   }
 
+  private rewrite(): void {
+    const content =
+      this.entries.map((e) => JSON.stringify(e)).join("\n") +
+      (this.entries.length ? "\n" : "");
+    writeFileSync(this.memoryPath, content, "utf-8");
+  }
+
   add(content: string, options: AddMemoryOptions = {}): MemoryEntry {
     this.load();
     const now = new Date().toISOString();
@@ -94,6 +99,9 @@ export class MemoryStore {
       tags: options.tags ?? [],
       metadata: options.metadata,
       evidence: options.evidence,
+      embedding: embed(
+        [content.trim(), ...(options.tags ?? []), options.source ?? ""].join(" ")
+      ),
       createdAt: options.createdAt ?? now,
       updatedAt: now,
     };
@@ -102,7 +110,36 @@ export class MemoryStore {
     return entry;
   }
 
-  /** Ranked retrieval (TF-IDF + boosts) */
+  update(
+    id: string,
+    patch: Partial<
+      Pick<
+        MemoryEntry,
+        "content" | "type" | "tags" | "confidence" | "metadata" | "evidence"
+      >
+    >
+  ): MemoryEntry | null {
+    this.load();
+    const entry = this.entries.find((e) => e.id === id);
+    if (!entry) return null;
+    if (patch.content !== undefined) {
+      entry.content = patch.content.trim();
+      entry.embedding = embed(
+        [entry.content, ...(patch.tags ?? entry.tags ?? []), entry.source ?? ""].join(" ")
+      );
+    }
+    if (patch.type !== undefined) entry.type = patch.type;
+    if (patch.tags !== undefined) entry.tags = patch.tags;
+    if (patch.confidence !== undefined) entry.confidence = patch.confidence;
+    if (patch.metadata !== undefined)
+      entry.metadata = { ...entry.metadata, ...patch.metadata };
+    if (patch.evidence !== undefined)
+      entry.evidence = { ...entry.evidence, ...patch.evidence };
+    entry.updatedAt = new Date().toISOString();
+    this.rewrite();
+    return entry;
+  }
+
   search(
     query: string,
     options: { type?: MemoryType; limit?: number } = {}
@@ -111,7 +148,6 @@ export class MemoryStore {
     return rankMemories(this.entries, query, options);
   }
 
-  /** "Why did we …?" — search + structured summary */
   why(query: string, limit = 8): DecisionSummary {
     const results = this.search(query, { limit });
     return summarizeDecision(query, results);
@@ -163,6 +199,7 @@ export class MemoryStore {
       topTags,
       oldest: dates[0],
       newest: dates[dates.length - 1],
+      withEmbeddings: this.entries.filter((e) => e.embedding?.length).length,
     };
   }
 
@@ -174,20 +211,11 @@ export class MemoryStore {
     this.rewrite();
     return true;
   }
-
-  private rewrite(): void {
-    const content =
-      this.entries.map((e) => JSON.stringify(e)).join("\n") +
-      (this.entries.length ? "\n" : "");
-    writeFileSync(this.memoryPath, content, "utf-8");
-  }
 }
 
 export function initAgentOS(projectRoot: string = process.cwd()): AgentOSConfig {
   const dir = join(projectRoot, AGENTOS_DIR);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
   const configPath = join(dir, "config.json");
   const config: AgentOSConfig = {
@@ -201,14 +229,10 @@ export function initAgentOS(projectRoot: string = process.cwd()): AgentOSConfig 
   }
 
   const memPath = join(dir, MEMORY_FILE);
-  if (!existsSync(memPath)) {
-    writeFileSync(memPath, "", "utf-8");
-  }
+  if (!existsSync(memPath)) writeFileSync(memPath, "", "utf-8");
 
   const gi = join(dir, ".gitignore");
-  if (!existsSync(gi)) {
-    writeFileSync(gi, "*\n!.gitignore\n", "utf-8");
-  }
+  if (!existsSync(gi)) writeFileSync(gi, "*\n!.gitignore\n", "utf-8");
 
   return config;
 }
