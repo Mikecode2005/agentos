@@ -57,47 +57,57 @@ Not another agent.
 ## Killer Feature: Institutional Memory
 
 ```bash
-agentos memory search "why did we choose redis?"
+agentos memory ingest git --limit 100
+agentos memory why "why did we choose redis?"
 ```
 
 ```
-Decision: Redis was introduced on March 18.
+📌 Redis was introduced for session caching after auth endpoints
+   showed repeated DB reads under load
 
 Reason:
 The API was experiencing repeated database reads during
 authentication and session validation.
 
-Evidence:
-PR #184
-commit 82a91f
-Slack discussion #backend
-architecture.md
+Decisions & evidence:
+• Redis for session caching — high read volume on auth
+  └ Michael · 2025-03-18 · commit 82a91f
+• JWT rotation every 15 minutes — compliance review
+  └ PR #184
 
-Decision maker: Michael
-Status: Still active
-Confidence: 94%
+Confidence: 91%
+Sources: commit:82a91f, PR #184, src/auth/session.ts
 ```
 
 This is not "AI remembers your conversations."  
-This is **institutional memory for software development**.
+This is **institutional memory for software development** — backed by commits, PRs, and decisions.
 
 ---
 
-## Quick Start (V0.1 – Persistent Memory)
+## Quick Start (V0.1.1 – Memory + Git Ingest)
 
 ```bash
 # Initialize AgentOS in your project
 npx agentos init
 
-# Store a decision
+# Turn git history into institutional memory
+agentos memory ingest git --limit 50
+
+# Ask why (structured answer with evidence)
+agentos memory why "why redis"
+
+# Or store a decision manually
 agentos memory add "We chose PostgreSQL over MongoDB because of strong consistency requirements and existing ops expertise."
 
-# Search memory
-agentos memory search "why postgres?"
+# Ranked search
+agentos memory search "postgres"
 
-# Inspect memory health
+# Screenshot-friendly health
 agentos memory inspect
+agentos doctor
 ```
+
+See [docs/memory.md](docs/memory.md) for architecture (TF-IDF retrieval, commit evidence, extractive summaries).
 
 ---
 
@@ -105,7 +115,8 @@ agentos memory inspect
 
 | Version | Focus |
 |---------|-------|
-| **V0.1** | Persistent memory (episodic + semantic + project) |
+| **V0.1** | Persistent memory (JSONL store) |
+| **V0.1.1** | Git ingest · TF-IDF retrieval · `memory why` summaries |
 | **V0.2** | Agent adapters (Claude Code, Codex, Cline, OpenCode) |
 | **V0.3** | Skills system |
 | **V0.4** | Permissions & sandbox |
