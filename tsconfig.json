@@ -19,6 +19,7 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/memory" },
+    { "path": "packages/agents" },
     { "path": "apps/cli" }
   ],
   "exclude": ["node_modules", "dist"]

@@ -1,6 +1,6 @@
 {
   "name": "@agentos/memory",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Persistent memory for AI agents — git ingest, TF-IDF retrieval, decision summaries",
   "type": "module",
   "main": "./dist/index.js",
@@ -22,8 +22,6 @@
   "devDependencies": {
     "typescript": "^5.7.2"
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "license": "Apache-2.0"
 }

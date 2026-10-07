@@ -1,6 +1,6 @@
 {
   "name": "agentos",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "The open-source operating system for AI agents. Persistent memory, skills, tools, permissions, and multi-agent collaboration.",
   "private": true,
   "type": "module",

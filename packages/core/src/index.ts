@@ -9,17 +9,11 @@ export type MemoryType =
   | "preference"
   | "decision";
 
-/** Evidence linking a memory back to source artifacts */
 export interface MemoryEvidence {
-  /** git commit SHA (short or full) */
   commit?: string;
-  /** PR number e.g. 184 */
   pr?: number;
-  /** files touched */
   files?: string[];
-  /** external links (Slack, Notion, Linear, etc.) */
   links?: string[];
-  /** raw message / body excerpt */
   excerpt?: string;
 }
 
@@ -27,21 +21,14 @@ export interface MemoryEntry {
   id: string;
   type: MemoryType;
   content: string;
-  /** Optional structured metadata */
   metadata?: Record<string, unknown>;
-  /** Source of the memory (commit, pr, slack, manual, agent, etc.) */
   source?: string;
-  /** Who created it */
   author?: string;
-  /** Confidence 0–1 */
   confidence?: number;
-  /** Tags for filtering */
   tags?: string[];
-  /** Structured evidence for institutional memory */
   evidence?: MemoryEvidence;
   createdAt: string;
   updatedAt: string;
-  /** Soft delete */
   deletedAt?: string;
 }
 
@@ -60,7 +47,6 @@ export interface MemoryStats {
   newest?: string;
 }
 
-/** Structured answer to "why did we …?" */
 export interface DecisionSummary {
   query: string;
   headline: string;
@@ -86,13 +72,32 @@ export interface AgentIdentity {
   tools: string[];
 }
 
+export type AgentPlatform =
+  | "claude-code"
+  | "codex"
+  | "cline"
+  | "opencode"
+  | "gemini"
+  | "cursor"
+  | "generic";
+
+export interface AdapterManifest {
+  platform: AgentPlatform;
+  name: string;
+  instructionFiles: string[];
+  discovery: "file" | "mcp" | "cli" | "env";
+}
+
 export interface AgentOSConfig {
   projectRoot: string;
   memoryPath: string;
   version: string;
+  adapters?: AgentPlatform[];
 }
 
-export const AGENTOS_VERSION = "0.1.1";
+export const AGENTOS_VERSION = "0.2.0";
 export const AGENTOS_DIR = ".agentos";
 export const MEMORY_FILE = "memory.jsonl";
 export const INDEX_FILE = "index.json";
+export const CONTEXT_FILE = "context.md";
+export const ADAPTERS_FILE = "adapters.json";
