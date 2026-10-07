@@ -1,7 +1,7 @@
 {
   "name": "agentos",
-  "version": "0.4.0",
-  "description": "The open-source operating system for AI agents. Persistent memory, skills, tools, permissions, and multi-agent collaboration.",
+  "version": "0.5.0",
+  "description": "The open-source operating system for AI agents.",
   "private": true,
   "type": "module",
   "workspaces": ["apps/*", "packages/*"],
@@ -13,7 +13,7 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["ai", "agents", "memory", "llm", "claude", "codex", "agentos", "multi-agent", "skills", "permissions"],
+  "keywords": ["ai", "agents", "memory", "llm", "agentos", "multi-agent", "skills", "permissions", "mcp"],
   "author": "Michael",
   "license": "Apache-2.0",
   "repository": {

@@ -1,5 +1,5 @@
 /**
- * @agentos/agents — Adapters & context injection
+ * @agentos/agents — Adapters, context injection, memory MCP
  */
 
 export {
@@ -28,3 +28,5 @@ export { connectCline, disconnectCline } from "./cline.js";
 export { connectOpenCode, disconnectOpenCode } from "./opencode.js";
 export { connectGeneric, disconnectGeneric } from "./generic.js";
 export { connectPlatform, disconnectPlatform, listPlatforms } from "./registry.js";
+
+export { runMemoryMcp } from "./mcp-memory.js";

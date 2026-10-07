@@ -1,5 +1,5 @@
 /**
- * Team CLI subcommands
+ * Team CLI — real execution path
  */
 import type { MemoryStore } from "@agentos/memory";
 import {
@@ -62,16 +62,50 @@ export async function runTeamCommand(
     });
     console.log("");
     console.log(`  🤖 Running team "${name}" on: ${goal}`);
+    console.log("  (LLM plan if configured · real tools under permissions)");
     console.log("");
-    const result = await runTeamGoal(cwd, name, goal, pool);
-    console.log("  Plan:");
-    console.log("  ", JSON.stringify(result.plan, null, 2).split("\n").join("\n  "));
-    console.log("");
-    console.log("  Steps:");
-    for (const s of result.steps) {
-      console.log(`    [${s.status}] ${s.role}: ${s.error || "ok"}`);
+    try {
+      const result = await runTeamGoal(cwd, name, goal, pool, store);
+      const plan = result.plan as {
+        summary?: string;
+        source?: string;
+        model?: string;
+      };
+      console.log(
+        `  Plan source: ${plan?.source ?? "unknown"}${plan?.model ? ` (${plan.model})` : ""}`
+      );
+      if (plan?.summary) console.log(`  Summary: ${plan.summary}`);
+      console.log("");
+      console.log("  Steps:");
+      for (const s of result.steps) {
+        const icon =
+          s.status === "completed" ? "✓" : s.status === "blocked" ? "⊘" : "✗";
+        const r =
+          s.result && typeof s.result === "object"
+            ? (s.result as {
+                toolsUsed?: string[];
+                memoryHits?: number;
+                skillsApplied?: string[];
+                action?: string;
+              })
+            : {};
+        console.log(
+          `    ${icon} [${s.status}] ${s.role}: ${s.error || r.action || "ok"}`
+        );
+        if (r.toolsUsed?.length)
+          console.log(`         tools: ${r.toolsUsed.join(", ")}`);
+        if (r.memoryHits !== undefined)
+          console.log(`         memory hits: ${r.memoryHits}`);
+        if (r.skillsApplied?.length)
+          console.log(`         skills: ${r.skillsApplied.join(", ")}`);
+      }
+      console.log("");
+      console.log("  Tip: agentos memory inspect · check .agentos/audit.jsonl");
+      console.log("");
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
     }
-    console.log("");
     return;
   }
 
