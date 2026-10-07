@@ -84,7 +84,7 @@ This is **institutional memory for software development** — backed by commits,
 
 ---
 
-## Quick Start (V0.1.1 – Memory + Git Ingest)
+## Quick Start (V0.2 – Memory + Agent Adapters)
 
 ```bash
 # Initialize AgentOS in your project
@@ -105,6 +105,10 @@ agentos memory search "postgres"
 # Screenshot-friendly health
 agentos memory inspect
 agentos doctor
+
+# Wire your coding agent
+agentos connect claude-code
+agentos connect codex
 ```
 
 See [docs/memory.md](docs/memory.md) for architecture (TF-IDF retrieval, commit evidence, extractive summaries).
@@ -117,7 +121,7 @@ See [docs/memory.md](docs/memory.md) for architecture (TF-IDF retrieval, commit 
 |---------|-------|
 | **V0.1** | Persistent memory (JSONL store) |
 | **V0.1.1** | Git ingest · TF-IDF retrieval · `memory why` summaries |
-| **V0.2** | Agent adapters (Claude Code, Codex, Cline, OpenCode) |
+| **V0.2** | ✅ Agent adapters (Claude Code, Codex, Cline, OpenCode, generic) |
 | **V0.3** | Skills system |
 | **V0.4** | Permissions & sandbox |
 | **V0.5** | Multi-agent runtime |
