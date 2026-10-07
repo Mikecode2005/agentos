@@ -13,6 +13,7 @@ import { join } from "node:path";
 import type { AgentRole, AgentTeam } from "@agentos/core";
 import { AGENTOS_DIR, TEAMS_FILE } from "@agentos/core";
 import type { WorkerPool } from "./workers.js";
+import { llmPlan, stubPlan } from "./llm-plan.js";
 
 export const SOFTWARE_TEAM_ROLES: Omit<AgentRole, "id">[] = [
   {
@@ -143,42 +144,55 @@ export async function runTeamGoal(
   if (!team) throw new Error(`Team not found: ${teamIdOrName}`);
 
   const planner = team.agents.find((a) => a.role === "planner") ?? team.agents[0];
-  const planTask = pool.submit("agent.plan", { goal }, planner.id);
 
-  await waitForTask(pool, planTask.id, 5000);
-  const plan = pool.get(planTask.id);
+  let planObj: {
+    goal: string;
+    steps?: Array<{ agent: string; action: string; detail?: string }>;
+    summary?: string;
+    source?: string;
+  };
+  try {
+    planObj = await llmPlan(goal, team);
+  } catch {
+    const planTask = pool.submit("agent.plan", { goal }, planner.id);
+    await waitForTask(pool, planTask.id, 5000);
+    const plan = pool.get(planTask.id);
+    planObj = (plan?.result as typeof planObj) ?? stubPlan(goal);
+  }
 
   const steps: TeamRunResult["steps"] = [];
 
-  if (plan?.result && typeof plan.result === "object" && plan.result !== null) {
-    const planObj = plan.result as { steps?: Array<{ agent: string; action: string }> };
-    for (const step of planObj.steps ?? []) {
-      const agent =
-        team.agents.find((a) => a.role === step.agent) ?? team.agents[0];
-      let type = "echo";
-      const input: Record<string, unknown> = { goal, action: step.action, role: step.agent };
-      if (step.agent === "researcher") {
-        type = "memory.search";
-        input.query = goal;
-      }
-      const task = pool.submit(type, input, agent.id);
-      await waitForTask(pool, task.id, 5000);
-      const done = pool.get(task.id)!;
-      steps.push({
-        agentId: agent.id,
-        role: agent.role,
-        taskId: done.id,
-        status: done.status,
-        result: done.result,
-        error: done.error,
-      });
+  for (const step of planObj.steps ?? []) {
+    const agent =
+      team.agents.find((a) => a.role === step.agent) ?? team.agents[0];
+    let type = "echo";
+    const input: Record<string, unknown> = {
+      goal,
+      action: step.action,
+      detail: step.detail,
+      role: step.agent,
+    };
+    if (step.agent === "researcher") {
+      type = "memory.search";
+      input.query = goal;
     }
+    const task = pool.submit(type, input, agent.id);
+    await waitForTask(pool, task.id, 5000);
+    const done = pool.get(task.id)!;
+    steps.push({
+      agentId: agent.id,
+      role: agent.role,
+      taskId: done.id,
+      status: done.status,
+      result: done.result,
+      error: done.error,
+    });
   }
 
   return {
     teamId: team.id,
     goal,
-    plan: plan?.result,
+    plan: planObj,
     steps,
   };
 }
