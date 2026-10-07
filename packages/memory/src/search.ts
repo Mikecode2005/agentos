@@ -1,11 +1,9 @@
 /**
- * Retrieval ranking for AgentOS memory.
- *
- * V0.1.1 uses a lightweight TF-IDF + type/source/recency boosts.
- * No external embedding model required — works offline and fast.
+ * Retrieval ranking — hybrid TF-IDF + local embeddings
  */
 
 import type { MemoryEntry, MemorySearchResult, MemoryType } from "@agentos/core";
+import { embed, cosineSimilarity, hybridScore } from "./embeddings.js";
 
 const STOPWORDS = new Set([
   "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
@@ -22,53 +20,33 @@ const STOPWORDS = new Set([
 ]);
 
 const TYPE_BOOST: Record<MemoryType, number> = {
-  decision: 1.35,
-  project: 1.15,
-  preference: 1.1,
-  semantic: 1.05,
-  episodic: 1.0,
+  decision: 1.35, project: 1.15, preference: 1.1, semantic: 1.05, episodic: 1.0,
 };
 
 const SOURCE_BOOST: Record<string, number> = {
-  commit: 1.25,
-  pr: 1.3,
-  github: 1.2,
-  architecture: 1.15,
-  manual: 1.0,
-  cli: 1.0,
-  agent: 0.95,
+  commit: 1.25, pr: 1.3, github: 1.2, architecture: 1.15, manual: 1.0, cli: 1.0, agent: 0.95,
 };
 
 export function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9+#.\-_/]+/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 1 && !STOPWORDS.has(t));
+  return text.toLowerCase().replace(/[^a-z0-9+#.\-_/]+/g, " ").split(/\s+/).filter((t) => t.length > 1 && !STOPWORDS.has(t));
 }
 
 function termFreq(tokens: string[]): Map<string, number> {
   const tf = new Map<string, number>();
-  for (const t of tokens) {
-    tf.set(t, (tf.get(t) ?? 0) + 1);
-  }
+  for (const t of tokens) tf.set(t, (tf.get(t) ?? 0) + 1);
   return tf;
 }
 
 function docFreq(docs: string[][]): Map<string, number> {
   const df = new Map<string, number>();
   for (const tokens of docs) {
-    const unique = new Set(tokens);
-    for (const t of unique) {
-      df.set(t, (df.get(t) ?? 0) + 1);
-    }
+    for (const t of new Set(tokens)) df.set(t, (df.get(t) ?? 0) + 1);
   }
   return df;
 }
 
 function recencyBoost(isoDate: string): number {
-  const ageMs = Date.now() - new Date(isoDate).getTime();
-  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  const ageDays = (Date.now() - new Date(isoDate).getTime()) / 86400000;
   if (ageDays < 7) return 1.15;
   if (ageDays < 30) return 1.08;
   if (ageDays < 90) return 1.0;
@@ -78,8 +56,7 @@ function recencyBoost(isoDate: string): number {
 
 function sourceBoost(source?: string): number {
   if (!source) return 1.0;
-  const key = source.toLowerCase().split(/[:/\s]/)[0];
-  return SOURCE_BOOST[key] ?? 1.0;
+  return SOURCE_BOOST[source.toLowerCase().split(/[:/\s]/)[0]] ?? 1.0;
 }
 
 export function rankMemories(
@@ -90,31 +67,18 @@ export function rankMemories(
   const queryTokens = tokenize(query);
   if (queryTokens.length === 0) return [];
 
-  const filtered = options.type
-    ? entries.filter((e) => e.type === options.type)
-    : entries;
-
+  const filtered = options.type ? entries.filter((e) => e.type === options.type) : entries;
   if (filtered.length === 0) return [];
 
   const docs = filtered.map((e) =>
-    tokenize(
-      [
-        e.content,
-        ...(e.tags ?? []),
-        e.source ?? "",
-        e.author ?? "",
-        e.evidence?.excerpt ?? "",
-        ...(e.evidence?.files ?? []),
-      ].join(" ")
-    )
+    tokenize([e.content, ...(e.tags ?? []), e.source ?? "", e.author ?? "", e.evidence?.excerpt ?? "", ...(e.evidence?.files ?? [])].join(" "))
   );
 
   const df = docFreq(docs);
   const N = filtered.length;
   const queryTf = termFreq(queryTokens);
-  const whyIntent =
-    /\b(why|chose|chosen|decision|reason|because|instead)\b/i.test(query);
-
+  const whyIntent = /\b(why|chose|chosen|decision|reason|because|instead)\b/i.test(query);
+  const queryVec = embed(query);
   const scored: MemorySearchResult[] = [];
 
   for (let i = 0; i < filtered.length; i++) {
@@ -131,10 +95,8 @@ export function rankMemories(
       if (f === 0) continue;
       matched.add(term);
       const idf = Math.log(1 + N / (1 + (df.get(term) ?? 0)));
-      const tfNorm = (f * 2.2) / (f + 1.2);
-      score += qf * tfNorm * idf;
+      score += qf * ((f * 2.2) / (f + 1.2)) * idf;
     }
-
     if (score <= 0) continue;
 
     const lower = entry.content.toLowerCase();
@@ -146,12 +108,18 @@ export function rankMemories(
     score *= sourceBoost(entry.source);
     score *= recencyBoost(entry.createdAt);
     score *= 0.7 + 0.3 * (entry.confidence ?? 1);
+    if (whyIntent && entry.type === "decision") score *= 1.2;
 
-    if (whyIntent && entry.type === "decision") {
-      score *= 1.2;
-    }
+    const entryVec = entry.embedding ?? embed([entry.content, ...(entry.tags ?? []), entry.source ?? ""].join(" "));
+    const vectorSim = cosineSimilarity(queryVec, entryVec);
+    const combined = hybridScore(score, vectorSim, 0.35);
 
-    scored.push({ entry, score, highlights: [...matched].slice(0, 6) });
+    scored.push({
+      entry,
+      score: combined * 4,
+      highlights: [...matched].slice(0, 6),
+      scores: { lexical: score, vector: vectorSim },
+    });
   }
 
   scored.sort((a, b) => b.score - a.score);
