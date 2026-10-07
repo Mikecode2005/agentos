@@ -1,18 +1,13 @@
 #!/usr/bin/env node
 /**
- * AgentOS CLI
+ * AgentOS CLI v0.2
  *
- * Usage:
  *   agentos init
- *   agentos memory add <text>
- *   agentos memory search <query>
- *   agentos memory why <query>
- *   agentos memory summary <query>
- *   agentos memory ingest git [--limit N] [--since DATE]
- *   agentos memory inspect
- *   agentos memory list [--type decision]
+ *   agentos connect <platform>
+ *   agentos disconnect <platform>
+ *   agentos context [query]
+ *   agentos memory …
  *   agentos doctor
- *   agentos version
  */
 
 import { resolve } from "node:path";
@@ -24,6 +19,14 @@ import {
   isGitRepo,
   formatDecisionSummary,
 } from "@agentos/memory";
+import {
+  connectPlatform,
+  disconnectPlatform,
+  listPlatforms,
+  listConnectedAdapters,
+  refreshContext,
+  buildContextBlock,
+} from "@agentos/agents";
 import { AGENTOS_VERSION } from "@agentos/core";
 import type { MemoryType } from "@agentos/core";
 
@@ -32,32 +35,39 @@ const command = args[0];
 
 function printHelp() {
   console.log(`
-AgentOS — The open-source operating system for AI agents
+AgentOS — The open-source operating system for AI agents  v${AGENTOS_VERSION}
 
 Usage:
   agentos <command> [options]
 
-Commands:
-  init                      Initialize AgentOS in the current project
-  memory add <text>         Store a new memory (default type: decision)
-  memory search <query>     Ranked search over memories
-  memory why <query>        Institutional "why did we…?" answer with evidence
-  memory summary <query>    Alias for memory why
-  memory ingest git         Ingest git commits into memory
-                            [--limit N] [--since YYYY-MM-DD]
-  memory inspect            Show memory stats (screenshot-friendly)
-  memory list               List memories [--type decision]
-  doctor                    Health check
-  version                   Print version
-  help                      Show this help
+Setup:
+  init                         Initialize AgentOS in the current project
+  connect <platform>           Wire an agent to AgentOS memory
+                               platforms: claude-code | codex | cline | opencode | generic
+  disconnect <platform>        Remove AgentOS blocks from agent instruction files
+  context [query]              Refresh .agentos/context.md (injectable memory)
+
+Memory:
+  memory add <text>            Store a decision / fact
+  memory search <query>        Ranked search
+  memory why <query>           Institutional "why did we…?" answer
+  memory summary <query>       Alias for memory why
+  memory ingest git            Ingest git commits [--limit N] [--since DATE]
+  memory inspect               Screenshot-friendly stats
+  memory list [--type T]       List memories
+
+Other:
+  doctor                       Health check
+  version                      Print version
+  help                         Show this help
 
 Examples:
   agentos init
   agentos memory ingest git --limit 50
-  agentos memory add "We chose Redis for session caching because of high read volume on auth"
+  agentos connect claude-code
+  agentos connect codex
   agentos memory why "why redis"
-  agentos memory search "postgres"
-  agentos memory inspect
+  agentos context "authentication"
 `);
 }
 
@@ -107,10 +117,70 @@ async function main() {
     if (isGitRepo(cwd)) {
       console.log("    agentos memory ingest git --limit 50");
     }
-    console.log('    agentos memory add "We chose PostgreSQL because..."');
+    console.log("    agentos connect claude-code");
+    console.log("    agentos connect codex");
     console.log('    agentos memory why "why postgres"');
-    console.log("    agentos memory inspect");
     console.log("");
+    return;
+  }
+
+  if (command === "connect") {
+    const platform = args[1];
+    if (!platform) {
+      console.error("Usage: agentos connect <platform>");
+      console.error(`Platforms: ${listPlatforms().join(", ")}`);
+      process.exit(1);
+    }
+    const store = ensureInit(cwd);
+    await store.init();
+    try {
+      const result = connectPlatform(platform, cwd, store);
+      console.log("");
+      console.log(`  ✓ ${result.message}`);
+      console.log("");
+      console.log("  Files:");
+      for (const f of result.filesWritten) {
+        console.log(`    ${f}`);
+      }
+      console.log("");
+      console.log("  Your agent will now see institutional memory for this project.");
+      console.log("");
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (command === "disconnect") {
+    const platform = args[1];
+    if (!platform) {
+      console.error("Usage: agentos disconnect <platform>");
+      process.exit(1);
+    }
+    ensureInit(cwd);
+    try {
+      const result = disconnectPlatform(platform, cwd);
+      console.log("");
+      console.log(`  ✓ ${result.message}`);
+      console.log("");
+    } catch (err) {
+      console.error((err as Error).message);
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (command === "context") {
+    const store = ensureInit(cwd);
+    await store.init();
+    const query = args.slice(1).join(" ").trim() || undefined;
+    const path = refreshContext(store, cwd, query);
+    console.log("");
+    console.log(`  ✓ Context written → ${path}`);
+    console.log("");
+    const preview = buildContextBlock(store, { query, limit: 6 });
+    console.log(preview.split("\n").map((l) => "  " + l).join("\n"));
     return;
   }
 
@@ -146,6 +216,11 @@ async function main() {
         `  ${entry.content.slice(0, 80)}${entry.content.length > 80 ? "…" : ""}`
       );
       console.log("");
+      try {
+        refreshContext(store, cwd);
+      } catch {
+        /* optional */
+      }
       return;
     }
 
@@ -217,7 +292,9 @@ async function main() {
       const limit = limitStr ? parseInt(limitStr, 10) : 100;
 
       console.log("");
-      console.log(`  📥 Ingesting git history (limit ${limit}${since ? `, since ${since}` : ""})…`);
+      console.log(
+        `  📥 Ingesting git history (limit ${limit}${since ? `, since ${since}` : ""})…`
+      );
       const result = ingestGitCommits(store, cwd, { limit, since, skipExisting: true });
       console.log("");
       console.log(`  Scanned:  ${result.scanned} commits`);
@@ -233,9 +310,17 @@ async function main() {
             `    [${e.type}] ${e.content.slice(0, 70)}${e.content.length > 70 ? "…" : ""}`
           );
         }
+        try {
+          refreshContext(store, cwd);
+          console.log("");
+          console.log("  ✓ Context refreshed for connected agents");
+        } catch {
+          /* optional */
+        }
       }
       console.log("");
       console.log('  Try: agentos memory why "<topic>"');
+      console.log("       agentos connect claude-code");
       console.log("");
       return;
     }
@@ -263,6 +348,11 @@ async function main() {
           console.log(`    ${src.padEnd(12)} ${count}`);
         }
       }
+      const connected = listConnectedAdapters(cwd);
+      if (connected.length > 0) {
+        console.log("");
+        console.log(`  Connected agents: ${connected.join(", ")}`);
+      }
       if (stats.topTags.length > 0) {
         console.log("");
         console.log("  Top tags:");
@@ -288,7 +378,9 @@ async function main() {
       }
       console.log("");
       for (const e of entries) {
-        const prefix = e.evidence?.commit ? `commit:${e.evidence.commit}` : e.source;
+        const prefix = e.evidence?.commit
+          ? `commit:${e.evidence.commit}`
+          : e.source;
         console.log(
           `  [${e.type}] ${e.content.slice(0, 90)}${e.content.length > 90 ? "…" : ""}`
         );
@@ -316,15 +408,20 @@ async function main() {
       const store = new MemoryStore(cwd);
       await store.init();
       const stats = store.stats();
-      const memScore = Math.min(100, stats.total * 4 + (stats.bySource["commit"] ?? 0) * 2);
+      const connected = listConnectedAdapters(cwd);
+      const memScore = Math.min(
+        100,
+        stats.total * 4 + (stats.bySource["commit"] ?? 0) * 2 + connected.length * 10
+      );
       const filled = Math.floor(memScore / 10);
       const bar = "█".repeat(filled) + "░".repeat(10 - filled);
       console.log(`  Memory density     ${bar} ${memScore}%`);
       console.log(`  Total memories     ${stats.total}`);
-      console.log(
-        `  From commits       ${stats.bySource["commit"] ?? 0}`
-      );
+      console.log(`  From commits       ${stats.bySource["commit"] ?? 0}`);
       console.log(`  Decisions          ${stats.byType.decision}`);
+      console.log(
+        `  Agents connected   ${connected.length ? connected.join(", ") : "none"}`
+      );
       console.log("");
       if (stats.total === 0) {
         console.log("  ⚠  No memories yet");
@@ -332,8 +429,10 @@ async function main() {
           console.log("     → agentos memory ingest git --limit 50");
         }
         console.log('     → agentos memory add "…"');
-      } else if (stats.total < 5) {
-        console.log("  ⚠  Low memory density — keep recording decisions");
+      } else if (connected.length === 0) {
+        console.log("  ⚠  No agents connected yet");
+        console.log("     → agentos connect claude-code");
+        console.log("     → agentos connect codex");
       } else {
         console.log("  ✓  Looking good");
       }
